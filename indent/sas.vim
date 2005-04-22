@@ -1,7 +1,7 @@
 " Vim indent file
 " Language:     SAS 
 " Version:  0.2
-" Last Change:  2004 Sep. 25
+" Last Change:  2005 Apr. 22
 " Maintainer: Jianzhong Liu <jliu7@uiuc.edu>
 " Usage:  Do :help sas-indent from Vim
 
@@ -59,12 +59,12 @@ function SASGetIndent(lnum)
 
   "Skip comments line
   if b:comments == 1 || currstat =~ '^\s*\*' || currstat =~ '^\s*/\*'
-    if currstat =~ '\*/\s*$'
-      let b:comments = 0
-    endif
     if currstat =~ '^\s*/\*'
       let b:comments = 1
     endif 
+    if currstat =~ '\*/\s*$'
+      let b:comments = 0
+    endif
     return -1
   endif
 
@@ -93,36 +93,40 @@ function SASGetIndent(lnum)
   let prevstat = getline(plnum)
 
   "Add a shiftwidth to statements following if, else, %if, %else
-  "do, $do, data, proc and %macro
+  "do, %do, data, proc and %macro
   if prevstat =~? '^\s*\(do\|%do\|data\|proc\|%macro\|if\|%if\|else\|%else\)\>'
     let ind = ind + &sw
 
     " Remove unwanted indent after logical and arithmetic ifs
     if (prevstat =~? '^\s*\(if\|else\)\>' 
-          \ && prevstat =~? ';' && prevstat !~? '\<do\>')
-          \ || (prevstat =~? '^\s*\(%if\|%else\)\>' 
-          \ && prevstat =~? ';' && prevstat !~? '\<%do\>')
+          \ && prevstat =~? ';' && prevstat !~? '\<do\>'
+          \ && currstat !~? '^\s*else\>')
+      let ind = ind - &sw
+    endif
+    if (prevstat =~? '^\s*\(%if\|%else\)\>' 
+          \ && prevstat =~? ';' && prevstat !~? '%do\>'
+          \ && currstat !~? '^\s*%else\>')
       let ind = ind - &sw
     endif
 
     " If it's a do; statement, remove the unwanted indent
-    if (currstat =~? '^\s*\(do\|%do\)\>') && (prevstat !~? '^\s*\(do\|%do\)\>')
-          \ && (currstat !~? '\<\(to\|%to\)\>')
+    if ((currstat =~? '^\s*\(do\|%do\)\>') && (prevstat !~? '^\s*\(do\|%do\)\>')
+          \ && (currstat !~? '\<\(to\|%to\)\>'))
       let ind = ind - &sw
     endif
 
     " If previous statement is like proc ... run; or data ... run;
     " remove the indent
     if prevstat =~? '^\s*\(data\|proc\)\>' && prevstat =~? '\<run\>'
-      let ind = ind -&sw
+      let ind = ind - &sw
     endif
   endif
 
   "Subtract a shiftwidth from else, %else, end, %end, run and %mend
-  if currstat =~? '^\s*\(else\|%else\|end\|%end\)\>'
+  if (currstat =~? '^\s*\(else\|%else\|end\|%end\)\>')
     let ind = ind - &sw
   endif
-
+  
   "If it is a %mend statement, indent is 0
   if currstat =~? '^\s*%mend\>'
     let b:step = 0
@@ -151,7 +155,8 @@ function SASGetIndent(lnum)
 
   "If previous is a if...; or end; statement and current is a else statment,
   "add an additional indent
-  if prevstat =~? '^\s*\(if\|%if\|end\|%end\)\>' && currstat =~? '\<\(else\|%else\)\>'
+  if ((prevstat =~? '\<end\>' && currstat =~? '\<else\>')
+        \ || (prevstat =~? '\<%end\>' && currstat =~? '\<%else\>'))
     let ind = ind + &sw
   endif
 
